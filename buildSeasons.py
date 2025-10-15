@@ -50,6 +50,9 @@ class Season:
         WL = np.zeros(shape=(self.teams.shape[0],2))
         PTS = np.zeros(shape=(self.teams.shape[0],2))
         
+        MC_C = C # Adjacency for Colley and Massey
+        NP_C = C # Adjacency for Neumann-Park
+        
         for gm in self.season.itertuples():
             tms = (int(gm.Team1)-1,int(gm.Team2)-1)
             scores = (int(gm.Score1),int(gm.Score2))
@@ -57,11 +60,18 @@ class Season:
             for i in range(2):
                 WL[tms[i]] += (1,0) if (scores[i]>scores[(i+1)%2]) else (0,1)
                 for j in range(2):
-                    C[tms[i],tms[j]] += 1 if (i == j) else -1
+                    MC_C[tms[i],tms[j]] += 1 if (i == j) else -1
+                    NP_C[tms[i],tms[j]] += 1 if ((i != j) and (scores[j] > scores[i])) else 0
                     PTS[tms[i],j] += scores[0] if (i == j) else scores[1]
-                 
-        colTbls = self.makeColley(C,WL)
-        masTbls = self.makeMassey(C,PTS)
+                    
+        GmsTbl = pd.DataFrame({'Played' : np.diag(MC_C)}).drop_duplicates().sort_values('Played')
+        GmCts = np.unique(np.diag(MC_C),return_counts=True)
+        GmCts = pd.DataFrame({'Played' : GmCts[0].tolist(), 'Count' : GmCts[1].tolist()})
+        GmsTbl = pd.merge(GmsTbl,GmCts,how='left',on='Played')
+     
+        colTbls = self.makeColley(MC_C,WL)
+        masTbls = self.makeMassey(MC_C,PTS)
+        neuTbls = self.makeNeumann(NP_C,GmsTbl)
         return(colTbls,masTbls)
 
     def makeColley(self,C,WL):
@@ -79,11 +89,29 @@ class Season:
         b[b.shape[0]-1] = 0
         return(C_Mas,b)
     
-    def makeNeumann():
-        pass
+    def makeNeumann(self, C, GMS):
+        C_NP = C
+        if (max(np.linalg.eigvals(C)) == 0):
+            return(0)
+        else:
+            alpha = self.getAlpha(GMS)
+        
     
     def makeRwr():
         pass
+    
+    def getAlpha(self,M):
+        
+        tot = sum(M.Count) # Probability Divisor
+        num = 0
+        denom = 0
+        ct = 1
+        for i in M.itertuples():
+            p = i.Count/tot
+            num += p*ct*(ct-1)
+            denom += p*ct
+            ct += 1
+        return((2*denom)/num)
         
 MBB25 = Season("Men's Basketball",604302,11590)
 
