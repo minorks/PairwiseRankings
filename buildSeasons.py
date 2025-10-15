@@ -11,79 +11,73 @@ import numpy as np
 class Season:
     urlHook = "https://masseyratings.com/scores.php?"
     
-    def __init__(self,seasonType, seasonID, subsetID):
+    # For testing purposes...
+    perfSeason = pd.DataFrame({"RawDays" : [1,1,1],
+                              "GameDay" : [20200101, 20200101, 20200101],
+                              "Team1" : [1,1,2],
+                              "GameLoc1": [1,1,1],
+                              "Score1": [10,10,10],
+                              "Team2" : [2,3,3],
+                              "GameLoc2": [-1,-1,-1],
+                              "Score2" : [9,8,9]})
+
+    perfTeams = pd.DataFrame({"TeamID":[1,2,3],
+                              "TeamName":["A","B","C"]})
+    
+    def __init__(self,seasonType, seasonID=-1, subsetID=-1):
         self.seasonType = str(seasonType)
         self.getData(seasonID,subsetID)
+        self.tbls = self.__makeAdjacency__()
         
     def getData(self,seasonID, subsetID):
-        self.season = pd.read_csv(Season.urlHook+"s="+str(seasonID)+
-                             "&sub="+str(subsetID)+"&all=1&mode=3&sch=on&format=1",
-                            header=None,
-                            names = ["RawDays","GameDay","Team1","GameLoc1","Score1",
-                                     "Team2","GameLoc2","Score2"])
+        if (seasonID > 0 & subsetID > 0):
+            self.season = pd.read_csv(Season.urlHook+"s="+str(seasonID)+
+                                 "&sub="+str(subsetID)+"&all=1&mode=3&sch=on&format=1",
+                                header=None,
+                                names = ["RawDays","GameDay","Team1","GameLoc1","Score1",
+                                         "Team2","GameLoc2","Score2"])
+            
+            self.teams = pd.read_csv(Season.urlHook+"s="+str(seasonID)+"&sub="+str(subsetID)+
+                                 "&all=1&mode=3&sch=on&format=2",
+                                header=None,
+                                names = ["TeamID","TeamName"])     
+        else:
+            self.season = self.perfSeason
+            self.teams = self.perfTeams
         
-        self.teams = pd.read_csv(Season.urlHook+"s="+str(seasonID)+"&sub="+str(subsetID)+
-                             "&all=1&mode=3&sch=on&format=2",
-                            header=None,
-                            names = ["TeamID","TeamName"])
-        
-
-    def makeColley(self):
-         C = 2*np.eye(len(self.teams))
-         WL = np.zeros(shape=(len(self.teams),2))
-         b = np.zeros(shape=(len(self.teams),1))
-         
-         for gm in self.season.itertuples():
-             tms = (int(gm.Team1)-1,int(gm.Team2)-1)
-             
-         	# For the colley matrix, C_ij =
-            #     +t_i if i=j, where t_i is the total number of games played by team i
-            #     n_ij if i<>j, where n_ij is the number of times team i played team j
-             
-             for i in range(2):
-                C[tms[i],tms[i]] += 1
-             C[tms[0],tms[1]] -= 1
-             C[tms[1],tms[0]] -= 1
-             
-             # If team idA beats team idB, 
-             # increase the win count for A and the loss count for B.
-             
-             WL[tms[0]] += (1,0) if int(gm.Score1) > int(gm.Score2) else (0,1)
-             WL[tms[1]] += (0,1) if int(gm.Score1) > int(gm.Score2) else (1,0)
-             
-         for i in range(max(self.teams.TeamID)):
-            b[i] = 1 + (0.5*(WL[i,0]-WL[i,1]))
-                 
-         return(C, WL, b)
-     
-    def makeMassey(self):
-        C = np.eye(len(self.teams))
-        PTS = np.zeros(shape=(len(self.teams),2))
-        b = np.zeros(shape=(len(self.teams),1))
-         
-     	# For the Massey matrix, C_ij =
-        # t_i if i=j, where t_i is the total number of games played by team i
-        # -n_ij if i<>j, where n_ij is the number of times team i played team j
+    def __makeAdjacency__(self):
+        C = np.zeros(shape=(self.teams.shape[0],self.teams.shape[0]))
+        WL = np.zeros(shape=(self.teams.shape[0],2))
+        PTS = np.zeros(shape=(self.teams.shape[0],2))
         
         for gm in self.season.itertuples():
             tms = (int(gm.Team1)-1,int(gm.Team2)-1)
             scores = (int(gm.Score1),int(gm.Score2))
             
             for i in range(2):
+                WL[tms[i]] += (1,0) if (scores[i]>scores[(i+1)%2]) else (0,1)
                 for j in range(2):
                     C[tms[i],tms[j]] += 1 if (i == j) else -1
-                    PTS[tms[i],j] += scores[0] if (i == j) else scores[1]                    
-                    
-        for i in range(max(self.teams.TeamID)):
-            b[i] = PTS[i,0]-PTS[i,1]
-            
+                    PTS[tms[i],j] += scores[0] if (i == j) else scores[1]
+                 
+        colTbls = self.makeColley(C,WL)
+        masTbls = self.makeMassey(C,PTS)
+        return(colTbls,masTbls)
+
+    def makeColley(self,C,WL):
+        C_Col = C + 2*np.eye(self.teams.shape[0]) # Add 2 to each diagonal element
+        b = 1 + (0.5*(WL[:,0]-WL[:,1]))
+        return(C_Col,b)
+    
+    def makeMassey(self,C,PTS):
+        b = PTS[:,0]-PTS[:,1]
+        C_Mas = C
+        
         # Fix the rank deficiency by setting the last row of C to 1,
         # and the corresponding entry in b to 0.
-        
-        C[C.shape[0]-1,:] = 1
-        b[C.shape[0]-1,0] = 0
-            
-        return (C, PTS, b)
+        C_Mas[C.shape[0]-1,:] = 1
+        b[b.shape[0]-1] = 0
+        return(C_Mas,b)
     
     def makeNeumann():
         pass
