@@ -124,17 +124,3 @@ class Season:
 #         
 #         return ((2*mean) / (meanSquare - mean))
 # =============================================================================
-        
-        
-#MBB25 = Season("Men's Basketball",2025, 604302,11590)
-#CFB01 = Season("College Football",2001, 41846, 11604)
-CFB07 = Season("College Football",2007,73929,11604)
-
-# MasseyRatings uses the following conventions for lookups:
-# s = "season" [Sport and Year] (e.g., Men's College Basketball 2025 is "604302")
-# sub = subset of season (e.g., NCAA Division I is "11590"; NAIA is "12795")
-# all = 1 (vice "inter" = 1 [to denote non-confrence only] or 
-#       "intra" = 1 [to denote in-conference only])
-# mode = {1: "Text"; 2: "CSV Games"; 3: "CSV Teams"; 4: "CSV 'Hyper-Games'"}
-# sch and/or exhib = on (use sch=on only to exclude exhibition games)
-# format = {1: }
