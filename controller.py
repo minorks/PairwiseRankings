@@ -11,6 +11,16 @@ from pandas import DataFrame
 
 sol = Solvers()
 
+# MasseyRatings uses the following conventions for lookups:
+# s = "season" [Sport and Year] (e.g., Men's College Basketball 2025 is "604302")
+# sub = subset of season (e.g., NCAA Division I is "11590"; NAIA is "12795")
+# all = 1 (vice "inter" = 1 [to denote non-confrence only] or 
+#       "intra" = 1 [to denote in-conference only])
+# mode = {1: "Text"; 2: "CSV Games"; 3: "CSV Teams"; 4: "CSV 'Hyper-Games'"}
+# sch and/or exhib = on (use sch=on only to exclude exhibition games)
+# format = {1: }
+
+
 # [0] = Season definition
 # [1] = Season (constructed)
 # [2] = Rankings
@@ -24,10 +34,6 @@ for s in toAnalyze:
                              "Massey" : sol.LinearSolver(s[1].tbls[1][0], s[1].tbls[1][1])[:,1],
                              "RWR" : sol.RWRSolver(s[1].tbls[3])[:,1]})
     s[2] = comp.map(lambda x: s[1].teams['TeamName'][int(x)-1])
-    
-    
-    
-        
     
 
 
