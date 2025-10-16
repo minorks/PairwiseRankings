@@ -25,8 +25,9 @@ class Season:
     perfTeams = pd.DataFrame({"TeamID":[1,2,3],
                               "TeamName":["A","B","C"]})
     
-    def __init__(self,seasonType, seasonID=-1, subsetID=-1, rwrP = 0.75):
+    def __init__(self,seasonType, year, seasonID=-1, subsetID=-1, rwrP = 0.75):
         self.seasonType = str(seasonType)
+        self.year = year
         self.getData(seasonID,subsetID)
         self.tbls = self.__makeAdjacency__(rwrP)
         
@@ -125,7 +126,9 @@ class Season:
 # =============================================================================
         
         
-MBB25 = Season("Men's Basketball",604302,11590)
+#MBB25 = Season("Men's Basketball",2025, 604302,11590)
+#CFB01 = Season("College Football",2001, 41846, 11604)
+CFB07 = Season("College Football",2007,73929,11604)
 
 # MasseyRatings uses the following conventions for lookups:
 # s = "season" [Sport and Year] (e.g., Men's College Basketball 2025 is "604302")
