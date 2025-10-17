@@ -5,7 +5,7 @@ Created on Tue Oct 14 15:36:03 2025
 @author: hokie
 """
 
-from copy import deepcopy
+from copy import copy
 import pandas as pd
 import numpy as np
 
@@ -49,9 +49,9 @@ class Season:
         
     def __makeAdjacency__(self,rwrP):
         MC_C = np.zeros(shape=(self.teams.shape[0],self.teams.shape[0]))
-        NP_C = deepcopy(MC_C) # Adjacency for Neumann-Park 
-        RWR_N = deepcopy(MC_C) # Adjacency for RWR - games only (existence)
-        RWR_B = deepcopy(MC_C)
+        NP_C = copy(MC_C) # Adjacency for Neumann-Park 
+        RWR_N = copy(MC_C) # Adjacency for RWR - games only (existence)
+        RWR_B = copy(MC_C)
         WL = np.zeros(shape=(self.teams.shape[0],2))
         PTS = np.zeros(shape=(self.teams.shape[0],2))
         
@@ -64,18 +64,13 @@ class Season:
                 RWR_B[tms[i],tms[(i+1)%2]] += 1 if (scores[i]>scores[(i+1)%2]) else -1
                 for j in range(2):
                     MC_C[tms[i],tms[j]] += 1 if (i == j) else -1
-                    NP_C[tms[i],tms[j]] += 1 if ((i != j) and (scores[i] > scores[j])) else 0
+                    NP_C[tms[i],tms[j]] += 1 if ((i != j) and (scores[j] > scores[i])) else 0
                     RWR_N[tms[i],tms[j]] += 1 if (i != j) else 0
                     PTS[tms[i],j] += scores[0] if (i == j) else scores[1]
-                    
-        GmsTbl = pd.DataFrame({'Played' : np.diag(MC_C)}).drop_duplicates().sort_values('Played')
-        GmCts = np.unique(np.diag(MC_C),return_counts=True)
-        GmCts = pd.DataFrame({'Played' : GmCts[0].tolist(), 'Count' : GmCts[1].tolist()})
-        GmsTbl = pd.merge(GmsTbl,GmCts,how='left',on='Played')
      
         colTbls = self.makeColley(MC_C,WL)
         masTbls = self.makeMassey(MC_C,PTS)
-        neuTbls = self.makeNeumann(NP_C,GmsTbl)
+        neuTbls = self.makeNeumann(NP_C,np.sum(RWR_N,axis=1))
         rwrTbls = self.makeRwr(RWR_N,RWR_B,WL,rwrP)
         return(colTbls,masTbls,neuTbls,rwrTbls)
 
@@ -86,7 +81,7 @@ class Season:
     
     def makeMassey(self,C,PTS):
         b = PTS[:,0]-PTS[:,1]
-        C_Mas = deepcopy(C)
+        C_Mas = copy(C)
         
         # Fix the rank deficiency by setting the last row of C to 1,
         # and the corresponding entry in b to 0.
@@ -95,8 +90,8 @@ class Season:
         return(C_Mas,b)
     
     def makeNeumann(self, C, GMS):
-        C_NP = deepcopy(C)
-        alpha = 0 if (max(np.linalg.eigvals(C)) == 0) else self.__getAlpha__(GMS)
+        C_NP = copy(C)
+        alpha = 0 if (max(np.linalg.eigvals(C)) == 0) else 1/self.__getAlpha__(GMS)
         return(C_NP,alpha)
     
     def makeRwr(self,N,B,WL,p):
@@ -109,9 +104,10 @@ class Season:
                 
         return(D)
                     
-    
     def __getAlpha__(self,M):
-        return(1/4.875)
+        k = sum(M)/len(M)       # Mean games played
+        k2 = sum(M**2)/len(M)   # MeanSquared games played
+        return((k2-k)/(2*k))
         
 # =============================================================================
 #         FIX THIS STUFF

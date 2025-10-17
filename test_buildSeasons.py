@@ -60,12 +60,3 @@ class seasonTests(unittest.TestCase):
         
 sTest = seasonTests()
 unittest.main()
-# =============================================================================
-#     runner = unittest.TextTestRunner()
-#     runner.run(sTest.testColley())
-#     runner.run(sTest.testMassey())
-# =============================================================================
-    
-    
-
-

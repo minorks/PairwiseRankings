@@ -37,7 +37,14 @@ class Solvers:
     def RWRSolver(self,D):
         r = null_space(D)   # Returns unitary eigenvector in 2-Norm
         r = r / sum(r)      # Rescales eigenvector 1-Norm to obtain distribution
-        return(self.__assignRanks__(r))
+        return(self.__assignRanks__(r),self.__getQMin__(r))
+    
+    def __getQMin__(self,ranks):
+        q = 0
+        for i in range(1,min(5,len(ranks)),1):
+            q += ((ranks[i-1] + ranks[i]) / ((ranks[i-1]-ranks[i])**2))-1
+        return(q)
+            
     
     
    
